@@ -215,3 +215,13 @@ def copy_items(item_list, des_path):
 
         else:
             raise ValueError(f"Không phải file hoặc thư mục: {item_path}")
+
+
+def text_to_item_list(text):
+    """
+    Chuyển text nhiều dòng thành list đường dẫn,
+    đồng thời đổi dấu '\\' thành '/'.
+    """
+    return [
+        line.strip().replace("\\", "/") for line in text.splitlines() if line.strip()
+    ]
