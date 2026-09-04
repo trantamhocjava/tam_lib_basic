@@ -177,3 +177,41 @@ def save_directory_tree(dir_path: str, txt_path: str):
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def copy_items(item_list, des_path):
+    """
+    Với mỗi phần tử trong item_list:
+
+    - Nếu là file:
+        a/b/c/d.ext
+      -> copy thành:
+        des_path/d.ext
+
+    - Nếu là thư mục:
+        a/b/c/d
+      -> copy toàn bộ thư mục thành:
+        des_path/d
+
+    Nếu des_path chưa tồn tại thì tự tạo.
+    """
+    des_path = os.path.abspath(des_path)
+    os.makedirs(des_path, exist_ok=True)
+
+    for item_path in item_list:
+        item_path = os.path.abspath(item_path)
+
+        if not os.path.exists(item_path):
+            raise FileNotFoundError(f"Không tồn tại: {item_path}")
+
+        item_name = os.path.basename(item_path)
+        dst_path = os.path.join(des_path, item_name)
+
+        if os.path.isfile(item_path):
+            shutil.copy2(item_path, dst_path)
+
+        elif os.path.isdir(item_path):
+            shutil.copytree(item_path, dst_path, dirs_exist_ok=True)
+
+        else:
+            raise ValueError(f"Không phải file hoặc thư mục: {item_path}")
