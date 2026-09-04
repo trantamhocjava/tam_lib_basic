@@ -1,6 +1,7 @@
 import os
 import shutil
 import zipfile
+from pathlib import Path
 
 
 def zip_folder(src_path):
@@ -134,3 +135,45 @@ def move_contents(src_path, des_path):
         des_item = os.path.join(des_path, name)
 
         shutil.move(src_item, des_item)
+
+
+def save_directory_tree(dir_path: str, txt_path: str):
+    """
+    Phân tích toàn bộ cấu trúc của dir_path và lưu cây thư mục vào txt_path.
+
+    Ví dụ output:
+    dir_path/
+        |--sub_1/
+            |--subsub_1/
+            |--file.png
+        |--sub_2/
+    """
+    root = Path(dir_path)
+    output_path = Path(txt_path)
+
+    if not root.exists():
+        raise FileNotFoundError(f"Không tồn tại thư mục: {dir_path}")
+
+    if not root.is_dir():
+        raise NotADirectoryError(f"Không phải thư mục: {dir_path}")
+
+    lines = [f"{root.name}/"]
+
+    def build_tree(current_dir: Path, depth: int):
+        items = sorted(
+            current_dir.iterdir(), key=lambda x: (x.is_file(), x.name.lower())
+        )
+
+        for item in items:
+            indent = "    " * depth
+
+            if item.is_dir():
+                lines.append(f"{indent}|--{item.name}/")
+                build_tree(item, depth + 1)
+            else:
+                lines.append(f"{indent}|--{item.name}")
+
+    build_tree(root, depth=1)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text("\n".join(lines), encoding="utf-8")
