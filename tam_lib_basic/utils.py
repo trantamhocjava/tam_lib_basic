@@ -112,3 +112,25 @@ def clear_folder_except(src_path, file_names):
             shutil.rmtree(path)
         else:
             os.remove(path)
+
+
+def move_contents(src_path, des_path):
+    """
+    Di chuyển tất cả file và thư mục con trực tiếp trong src_path
+    sang des_path.
+
+    Không xóa chính thư mục src_path.
+    """
+    src_path = os.path.abspath(src_path)
+    des_path = os.path.abspath(des_path)
+
+    if not os.path.isdir(src_path):
+        raise ValueError(f"Không phải thư mục hợp lệ: {src_path}")
+
+    os.makedirs(des_path, exist_ok=True)
+
+    for name in os.listdir(src_path):
+        src_item = os.path.join(src_path, name)
+        des_item = os.path.join(des_path, name)
+
+        shutil.move(src_item, des_item)
