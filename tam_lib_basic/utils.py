@@ -313,3 +313,9 @@ def extract_and_move_file(dir_path, file_name):
     shutil.rmtree(extract_dir)
 
     return str(target_file)
+
+
+
+def clean_file_name(file_name):
+    result = file_name.strip()
+    return result
