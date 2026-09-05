@@ -225,3 +225,91 @@ def text_to_item_list(text):
     return [
         line.strip().replace("\\", "/") for line in text.splitlines() if line.strip()
     ]
+
+
+def extract_and_move_file(dir_path, file_name):
+    """
+    Trong dir_path:
+    - Tìm file <tên>.zip
+    - Giải nén thành dir_path/<tên>
+    - Xóa file .zip
+    - Tìm file có extension giống file_name trong thư mục đã giải nén
+    - Đổi tên file đó thành file_name
+    - Nếu dir_path/file_name đã tồn tại thì xóa
+    - Di chuyển file ra dir_path
+    - Xóa thư mục giải nén
+
+    Parameters
+    ----------
+    dir_path : str | Path
+        Đường dẫn thư mục.
+
+    file_name : str
+        Tên file đầu ra, ví dụ: "abc.pdf"
+    """
+
+    dir_path = Path(dir_path)
+
+    # Extension cần tìm, ví dụ ".pdf"
+    ext = Path(file_name).suffix
+
+    # Tìm đúng 1 file .zip trong dir_path
+    zip_files = list(dir_path.glob("*.zip"))
+
+    if len(zip_files) != 1:
+        raise ValueError(
+            f"Yêu cầu dir_path có đúng 1 file .zip, nhưng tìm thấy {len(zip_files)} file."
+        )
+
+    zip_path = zip_files[0]
+
+    # <tên>.zip -> <tên>
+    extract_dir = dir_path / zip_path.stem
+
+    # Nếu thư mục giải nén cũ đã tồn tại thì xóa trước
+    if extract_dir.exists():
+        shutil.rmtree(extract_dir)
+
+    # Giải nén
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        zf.extractall(extract_dir)
+
+    # Xóa file zip
+    zip_path.unlink()
+
+    # Tìm file có extension EXT trong toàn bộ thư mục đã giải nén
+    matched_files = [
+        p
+        for p in extract_dir.rglob("*")
+        if p.is_file() and p.suffix.lower() == ext.lower()
+    ]
+
+    if len(matched_files) != 1:
+        raise ValueError(
+            f"Yêu cầu có đúng 1 file extension '{ext}' trong {extract_dir}, "
+            f"nhưng tìm thấy {len(matched_files)} file."
+        )
+
+    source_file = matched_files[0]
+
+    # File đích
+    target_file = dir_path / file_name
+
+    # Nếu dir_path/file_name đã tồn tại thì xóa
+    if target_file.exists():
+        if target_file.is_file() or target_file.is_symlink():
+            target_file.unlink()
+        else:
+            shutil.rmtree(target_file)
+
+    # Đổi tên FILE thành file_name ngay trong thư mục giải nén
+    renamed_file = source_file.with_name(file_name)
+    source_file.rename(renamed_file)
+
+    # Di chuyển ra dir_path
+    shutil.move(str(renamed_file), str(target_file))
+
+    # Xóa thư mục giải nén
+    shutil.rmtree(extract_dir)
+
+    return str(target_file)
