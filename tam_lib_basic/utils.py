@@ -315,7 +315,44 @@ def extract_and_move_file(dir_path, file_name):
     return str(target_file)
 
 
-
 def clean_file_name(file_name):
     result = file_name.strip()
     return result
+
+
+def copy_directory(src_path: str, des_path: str) -> Path:
+    """
+    Copy toàn bộ file và thư mục bên trong src_path sang des_path.
+
+    Args:
+        src_path: Thư mục nguồn.
+        des_path: Thư mục đích.
+
+    Returns:
+        Path tới thư mục đích.
+    """
+
+    src_path = Path(src_path).resolve()
+    des_path = Path(des_path).resolve()
+
+    if not src_path.is_dir():
+        raise ValueError(f"src_path không tồn tại hoặc không phải thư mục: {src_path}")
+
+    des_path.mkdir(parents=True, exist_ok=True)
+
+    for item in src_path.iterdir():
+        target = des_path / item.name
+
+        if item.is_dir():
+            shutil.copytree(
+                item,
+                target,
+                dirs_exist_ok=True,
+            )
+        else:
+            shutil.copy2(
+                item,
+                target,
+            )
+
+    return des_path
