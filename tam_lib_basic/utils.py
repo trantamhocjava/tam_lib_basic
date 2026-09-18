@@ -410,3 +410,49 @@ def update_dir_from_zip(zip_path: str, dir_path: str) -> None:
 
     # Xóa file ZIP sau khi cập nhật thành công
     zip_path.unlink()
+
+
+def zip_dir_to_parent(dir_path: str) -> None:
+    """
+    Trong thư mục cha của dir_path:
+    1. Xóa tất cả file .zip hiện có.
+    2. Nén toàn bộ file và thư mục con bên trong dir_path.
+    3. Tạo file ZIP trong thư mục cha của dir_path.
+
+    Tên file ZIP:
+        <tên_thư_mục>.zip
+
+    Lưu ý:
+    - File ZIP chỉ chứa nội dung bên trong dir_path.
+    - Không chứa chính thư mục dir_path ở cấp ngoài cùng.
+    """
+
+    dir_path = Path(dir_path)
+
+    if not dir_path.is_dir():
+        raise NotADirectoryError(f"Không tìm thấy thư mục: {dir_path}")
+
+    parent_dir = dir_path.parent
+
+    # Xóa tất cả file .zip trong thư mục cha
+    for zip_file in parent_dir.glob("*.zip"):
+        zip_file.unlink()
+
+    # File ZIP đầu ra
+    zip_path = parent_dir / f"{dir_path.name}.zip"
+
+    # Nén toàn bộ nội dung bên trong dir_path
+    with zipfile.ZipFile(
+        zip_path, mode="w", compression=zipfile.ZIP_DEFLATED
+    ) as zip_file:
+
+        for item in dir_path.rglob("*"):
+            # Đường dẫn tương đối so với dir_path
+            relative_path = item.relative_to(dir_path)
+
+            if item.is_file():
+                zip_file.write(item, arcname=relative_path)
+
+            # Giữ lại cả thư mục rỗng
+            elif item.is_dir() and not any(item.iterdir()):
+                zip_file.writestr(str(relative_path) + "/", "")
