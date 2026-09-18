@@ -1,5 +1,6 @@
 import os
 import shutil
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -358,27 +359,23 @@ def copy_directory(src_path: str, des_path: str) -> Path:
     return des_path
 
 
-def extract_zip_and_delete(zip_path: str, dir_path: str) -> None:
+def update_dir_from_zip(zip_path: str, dir_path: str) -> None:
     """
-    Giải nén toàn bộ nội dung bên trong zip_path vào dir_path,
-    sau đó xóa file zip_path.
+    Giải nén zip_path và cập nhật nội dung của dir_path.
 
-    Ví dụ:
-        zip_path = "data.zip"
-        dir_path = "output"
+    Quy tắc:
+    - Nếu một file/thư mục trong NEW_LIST trùng tên với OLD_LIST:
+        -> xóa bản cũ
+        -> thay bằng bản mới từ ZIP.
+    - Nếu chỉ có trong OLD_LIST:
+        -> giữ nguyên.
+    - Nếu chỉ có trong NEW_LIST:
+        -> bổ sung vào dir_path.
+    - Sau khi hoàn thành:
+        -> xóa zip_path.
 
-    Nếu data.zip chứa:
-        a.txt
-        folder/
-            b.txt
-
-    Sau khi chạy:
-        output/
-            a.txt
-            folder/
-                b.txt
-
-    Và data.zip sẽ bị xóa.
+    Việc so sánh được thực hiện trên các file/thư mục
+    trực tiếp bên trong dir_path.
     """
 
     zip_path = Path(zip_path)
@@ -389,7 +386,27 @@ def extract_zip_and_delete(zip_path: str, dir_path: str) -> None:
 
     dir_path.mkdir(parents=True, exist_ok=True)
 
-    with zipfile.ZipFile(zip_path, "r") as zip_file:
-        zip_file.extractall(dir_path)
+    # Tạo thư mục tạm để giải nén ZIP
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir = Path(temp_dir)
 
+        # Giải nén ZIP
+        with zipfile.ZipFile(zip_path, "r") as zip_file:
+            zip_file.extractall(temp_dir)
+
+        # NEW_LIST = các file/thư mục trực tiếp bên trong ZIP
+        for new_item in temp_dir.iterdir():
+            old_item = dir_path / new_item.name
+
+            # Nếu OLD_LIST đã có item cùng tên -> xóa bản cũ
+            if old_item.exists() or old_item.is_symlink():
+                if old_item.is_dir() and not old_item.is_symlink():
+                    shutil.rmtree(old_item)
+                else:
+                    old_item.unlink()
+
+            # Đưa item mới vào dir_path
+            shutil.move(str(new_item), str(old_item))
+
+    # Xóa file ZIP sau khi cập nhật thành công
     zip_path.unlink()
