@@ -456,3 +456,21 @@ def zip_dir_to_parent(dir_path: str) -> None:
             # Giữ lại cả thư mục rỗng
             elif item.is_dir() and not any(item.iterdir()):
                 zip_file.writestr(str(relative_path) + "/", "")
+
+
+def convert_path_to_module(text: str) -> str:
+    # Loại bỏ phần từ dấu "." cuối cùng trở đi
+    text_1 = text.rsplit(".", 1)[0]
+
+    # Lấy nội dung sau dấu "/" thứ 5
+    parts = text_1.split("/", 5)
+
+    if len(parts) < 6:
+        raise ValueError("text phải chứa ít nhất 5 ký tự '/'")
+
+    text_2 = parts[5]
+
+    # Chuyển "/" thành "."
+    res = text_2.replace("/", ".")
+
+    return res
