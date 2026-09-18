@@ -356,3 +356,40 @@ def copy_directory(src_path: str, des_path: str) -> Path:
             )
 
     return des_path
+
+
+def extract_zip_and_delete(zip_path: str, dir_path: str) -> None:
+    """
+    Giải nén toàn bộ nội dung bên trong zip_path vào dir_path,
+    sau đó xóa file zip_path.
+
+    Ví dụ:
+        zip_path = "data.zip"
+        dir_path = "output"
+
+    Nếu data.zip chứa:
+        a.txt
+        folder/
+            b.txt
+
+    Sau khi chạy:
+        output/
+            a.txt
+            folder/
+                b.txt
+
+    Và data.zip sẽ bị xóa.
+    """
+
+    zip_path = Path(zip_path)
+    dir_path = Path(dir_path)
+
+    if not zip_path.is_file():
+        raise FileNotFoundError(f"Không tìm thấy file ZIP: {zip_path}")
+
+    dir_path.mkdir(parents=True, exist_ok=True)
+
+    with zipfile.ZipFile(zip_path, "r") as zip_file:
+        zip_file.extractall(dir_path)
+
+    zip_path.unlink()
