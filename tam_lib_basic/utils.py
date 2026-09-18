@@ -474,3 +474,74 @@ def convert_path_to_module(text: str) -> str:
     res = text_2.replace("/", ".")
 
     return res
+
+
+def update_dir_from_nested_zip(zip_path: str, dir_path: str) -> None:
+    """
+    Giải nén zip_path.
+
+    Cấu trúc ZIP mong đợi:
+        zip_path
+        └── TM_CON/
+            ├── file_1
+            ├── folder_1/
+            └── ...
+
+    NEW_LIST = các file/thư mục trực tiếp bên trong TM_CON.
+    OLD_LIST = các file/thư mục trực tiếp bên trong dir_path.
+
+    Quy tắc:
+    - Trùng tên giữa NEW_LIST và OLD_LIST:
+        -> thay thế item cũ bằng item mới.
+    - Chỉ có trong OLD_LIST:
+        -> giữ nguyên.
+    - Chỉ có trong NEW_LIST:
+        -> bổ sung vào dir_path.
+
+    Sau khi hoàn thành, xóa zip_path.
+    """
+
+    zip_path = Path(zip_path)
+    dir_path = Path(dir_path)
+
+    if not zip_path.is_file():
+        raise FileNotFoundError(f"Không tìm thấy file ZIP: {zip_path}")
+
+    dir_path.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir = Path(temp_dir)
+
+        # Giải nén ZIP
+        with zipfile.ZipFile(zip_path, "r") as zip_file:
+            zip_file.extractall(temp_dir)
+
+        # Sau khi giải nén phải có đúng 1 thư mục con TM_CON
+        extracted_items = list(temp_dir.iterdir())
+
+        if len(extracted_items) != 1:
+            raise ValueError("ZIP phải chứa đúng 1 thư mục con ở cấp ngoài cùng.")
+
+        tm_con = extracted_items[0]
+
+        if not tm_con.is_dir():
+            raise ValueError(
+                "Item duy nhất ở cấp ngoài cùng của ZIP phải là một thư mục."
+            )
+
+        # NEW_LIST = các item trực tiếp trong TM_CON
+        for new_item in tm_con.iterdir():
+            old_item = dir_path / new_item.name
+
+            # Nếu đã tồn tại item cùng tên -> xóa bản cũ
+            if old_item.exists() or old_item.is_symlink():
+                if old_item.is_dir() and not old_item.is_symlink():
+                    shutil.rmtree(old_item)
+                else:
+                    old_item.unlink()
+
+            # Đưa item mới vào dir_path
+            shutil.move(str(new_item), str(old_item))
+
+    # Xóa ZIP sau khi xử lý thành công
+    zip_path.unlink()
