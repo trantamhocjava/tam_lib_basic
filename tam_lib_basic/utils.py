@@ -360,59 +360,6 @@ def copy_directory(src_path: str, des_path: str) -> Path:
     return des_path
 
 
-def update_dir_from_zip(zip_path: str, dir_path: str) -> None:
-    """
-    Giải nén zip_path và cập nhật nội dung của dir_path.
-
-    Quy tắc:
-    - Nếu một file/thư mục trong NEW_LIST trùng tên với OLD_LIST:
-        -> xóa bản cũ
-        -> thay bằng bản mới từ ZIP.
-    - Nếu chỉ có trong OLD_LIST:
-        -> giữ nguyên.
-    - Nếu chỉ có trong NEW_LIST:
-        -> bổ sung vào dir_path.
-    - Sau khi hoàn thành:
-        -> xóa zip_path.
-
-    Việc so sánh được thực hiện trên các file/thư mục
-    trực tiếp bên trong dir_path.
-    """
-
-    zip_path = Path(zip_path)
-    dir_path = Path(dir_path)
-
-    if not zip_path.is_file():
-        raise FileNotFoundError(f"Không tìm thấy file ZIP: {zip_path}")
-
-    dir_path.mkdir(parents=True, exist_ok=True)
-
-    # Tạo thư mục tạm để giải nén ZIP
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_dir = Path(temp_dir)
-
-        # Giải nén ZIP
-        with zipfile.ZipFile(zip_path, "r") as zip_file:
-            zip_file.extractall(temp_dir)
-
-        # NEW_LIST = các file/thư mục trực tiếp bên trong ZIP
-        for new_item in temp_dir.iterdir():
-            old_item = dir_path / new_item.name
-
-            # Nếu OLD_LIST đã có item cùng tên -> xóa bản cũ
-            if old_item.exists() or old_item.is_symlink():
-                if old_item.is_dir() and not old_item.is_symlink():
-                    shutil.rmtree(old_item)
-                else:
-                    old_item.unlink()
-
-            # Đưa item mới vào dir_path
-            shutil.move(str(new_item), str(old_item))
-
-    # Xóa file ZIP sau khi cập nhật thành công
-    zip_path.unlink()
-
-
 def zip_dir_to_parent(dir_path: str) -> None:
     """
     Trong thư mục cha của dir_path:
@@ -564,3 +511,68 @@ def get_next_ans_name(src_path: str) -> str:
 
     res = f"ans_{num}"
     return res
+
+
+def update_dir_from_zip(zip_path: str, dir_path: str) -> None:
+    """
+    Cập nhật ``dir_path`` bằng tài nguyên trong ``zip_path``.
+
+    Hỗ trợ 2 dạng ZIP:
+    - ZIP chứa trực tiếp tài nguyên coding.
+    - ZIP chứa 1 thư mục con, bên trong mới có tài nguyên coding.
+
+    Quy tắc cập nhật các item cấp đầu tiên:
+    - Trùng tên giữa ZIP và ``dir_path`` -> thay thế bằng item mới.
+    - Chỉ có trong ``dir_path`` -> giữ nguyên.
+    - Chỉ có trong ZIP -> bổ sung vào ``dir_path``.
+
+    Nếu thư mục trùng tên, toàn bộ thư mục cũ sẽ bị thay thế,
+    không merge nội dung bên trong.
+
+    Parameters
+    ----------
+    zip_path : str
+        Đường dẫn tới file ZIP.
+    dir_path : str
+        Đường dẫn tới thư mục cần cập nhật.
+
+    Returns
+    -------
+    None
+    """
+
+    zip_path = Path(zip_path)
+    dir_path = Path(dir_path)
+
+    dir_path.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir = Path(temp_dir)
+
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall(temp_dir)
+
+        extracted_items = [
+            item for item in temp_dir.iterdir() if item.name != "__MACOSX"
+        ]
+
+        if len(extracted_items) == 1 and extracted_items[0].is_dir():
+            new_root = extracted_items[0]
+        else:
+            new_root = temp_dir
+
+        new_list = [item for item in new_root.iterdir() if item.name != "__MACOSX"]
+
+        for new_item in new_list:
+            dest_item = dir_path / new_item.name
+
+            if dest_item.exists() or dest_item.is_symlink():
+                if dest_item.is_dir() and not dest_item.is_symlink():
+                    shutil.rmtree(dest_item)
+                else:
+                    dest_item.unlink()
+
+            if new_item.is_dir():
+                shutil.copytree(new_item, dest_item)
+            else:
+                shutil.copy2(new_item, dest_item)
