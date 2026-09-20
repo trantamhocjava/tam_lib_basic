@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import tempfile
 import zipfile
@@ -545,3 +546,24 @@ def update_dir_from_nested_zip(zip_path: str, dir_path: str) -> None:
 
     # Xóa ZIP sau khi xử lý thành công
     zip_path.unlink()
+
+
+def get_next_ans_filename(src_path: str) -> str:
+    src_dir = Path(src_path)
+
+    pattern = re.compile(r"^ans_(\d+)\.md$")
+
+    numbers = []
+
+    for file_path in src_dir.iterdir():
+        if not file_path.is_file():
+            continue
+
+        match = pattern.match(file_path.name)
+        if match:
+            numbers.append(int(match.group(1)))
+
+    num = max(numbers, default=0) + 1
+
+    res = f"ans_{num}.md"
+    return res
