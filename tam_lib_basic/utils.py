@@ -529,6 +529,8 @@ def update_dir_from_zip(zip_path: str, dir_path: str) -> None:
     Nếu thư mục trùng tên, toàn bộ thư mục cũ sẽ bị thay thế,
     không merge nội dung bên trong.
 
+    Sau khi cập nhật thành công, file ``zip_path`` sẽ bị xóa.
+
     Parameters
     ----------
     zip_path : str
@@ -576,3 +578,6 @@ def update_dir_from_zip(zip_path: str, dir_path: str) -> None:
                 shutil.copytree(new_item, dest_item)
             else:
                 shutil.copy2(new_item, dest_item)
+
+    # Xóa file ZIP sau khi cập nhật thành công
+    zip_path.unlink()
